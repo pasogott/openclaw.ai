@@ -522,12 +522,24 @@ packages:
 onlyBuiltDependencies:
   - esbuild
 EOF
+  cat >"${repo}/package.json" <<'EOF'
+{
+  "name": "repo",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}
+EOF
 
   ensure_pnpm_git_prepare_allowlist "${repo}"
   ensure_pnpm_git_prepare_allowlist "${repo}"
 
-  count="$(grep -c '@tloncorp/api' "${repo}/pnpm-workspace.yaml" || true)"
-  assert_eq "$count" "1" "ensure_pnpm_git_prepare_allowlist count"
+  workspace_count="$(grep -c '@tloncorp/api' "${repo}/pnpm-workspace.yaml" || true)"
+  package_count="$(grep -c '@tloncorp/api' "${repo}/package.json" || true)"
+  assert_eq "$workspace_count" "1" "ensure_pnpm_git_prepare_allowlist workspace count"
+  assert_eq "$package_count" "1" "ensure_pnpm_git_prepare_allowlist package count"
 )
 
 echo "==> case: install_openclaw_compat_shim (always uses user-local bin)"

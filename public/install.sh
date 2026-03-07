@@ -2024,20 +2024,14 @@ EOF
 ensure_pnpm_git_prepare_allowlist() {
     local repo_dir="$1"
     local workspace_file="${repo_dir}/pnpm-workspace.yaml"
+    local package_file="${repo_dir}/package.json"
     local dep="@tloncorp/api"
     local tmp=""
 
-    if [[ ! -f "$workspace_file" ]]; then
-        return 0
-    fi
-
-    if grep -Fq "\"${dep}\"" "$workspace_file" || grep -Fq -- "- ${dep}" "$workspace_file"; then
-        return 0
-    fi
-
-    tmp="$(mktemp)"
-    if grep -q '^onlyBuiltDependencies:[[:space:]]*$' "$workspace_file"; then
-        awk -v dep="$dep" '
+    if [[ -f "$workspace_file" ]] && ! grep -Fq "\"${dep}\"" "$workspace_file" && ! grep -Fq -- "- ${dep}" "$workspace_file"; then
+        tmp="$(mktemp)"
+        if grep -q '^onlyBuiltDependencies:[[:space:]]*$' "$workspace_file"; then
+            awk -v dep="$dep" '
       BEGIN { inserted = 0 }
       {
         print
@@ -2047,11 +2041,36 @@ ensure_pnpm_git_prepare_allowlist() {
         }
       }
     ' "$workspace_file" >"$tmp"
-    else
-        cat "$workspace_file" >"$tmp"
-        printf '\nonlyBuiltDependencies:\n  - "%s"\n' "$dep" >>"$tmp"
+        else
+            cat "$workspace_file" >"$tmp"
+            printf '\nonlyBuiltDependencies:\n  - "%s"\n' "$dep" >>"$tmp"
+        fi
+        mv "$tmp" "$workspace_file"
     fi
-    mv "$tmp" "$workspace_file"
+
+    if [[ -f "$package_file" ]]; then
+        node - "$package_file" "$dep" <<'EOF'
+const fs = require("node:fs");
+
+const [packageFile, dep] = process.argv.slice(2);
+const data = JSON.parse(fs.readFileSync(packageFile, "utf8"));
+const list = data.pnpm?.onlyBuiltDependencies;
+if (Array.isArray(list)) {
+  if (!list.includes(dep)) {
+    list.unshift(dep);
+    fs.writeFileSync(packageFile, `${JSON.stringify(data, null, 2)}\n`);
+  }
+  process.exit(0);
+}
+
+if (!data.pnpm || typeof data.pnpm !== "object") {
+  data.pnpm = {};
+}
+data.pnpm.onlyBuiltDependencies = [dep];
+fs.writeFileSync(packageFile, `${JSON.stringify(data, null, 2)}\n`);
+EOF
+    fi
+
     ui_info "Updated pnpm allowlist for git-hosted build dependency: ${dep}"
 }
 
