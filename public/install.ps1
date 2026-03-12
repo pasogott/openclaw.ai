@@ -85,12 +85,17 @@ function Install-Node {
     # Try winget first (Windows 11 / Windows 10 with App Installer)
     if (Get-Command winget -ErrorAction SilentlyContinue) {
         Write-Host "  Using winget..." -ForegroundColor Gray
-        winget install OpenJS.NodeJS.LTS --accept-package-agreements --accept-source-agreements
+        winget install OpenJS.NodeJS.LTS --source winget --accept-package-agreements --accept-source-agreements
 
         # Refresh PATH
         $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-        Write-Host "[OK] Node.js installed via winget" -ForegroundColor Green
-        return
+        if (Check-Node) {
+            Write-Host "[OK] Node.js installed via winget" -ForegroundColor Green
+            return
+        }
+        Write-Host "[!] winget completed, but Node.js is still unavailable in this shell" -ForegroundColor Yellow
+        Write-Host "Restart PowerShell and re-run the installer if Node.js was installed successfully." -ForegroundColor Yellow
+        exit 1
     }
 
     # Try Chocolatey
