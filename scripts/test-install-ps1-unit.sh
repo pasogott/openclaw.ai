@@ -22,6 +22,7 @@ require_contains() {
 
 for script in "${SCRIPTS[@]}"; do
   exit_lines="$(grep -nE '^[[:space:]]*exit\b' "$script" || true)"
+  # shellcheck disable=SC2016
   if [[ "$exit_lines" != *'exit $script:InstallExitCode'* ]]; then
     fail "$(realpath --relative-to="$ROOT_DIR" "$script"): expected the only installer exit to live in Complete-Install"
   fi
@@ -44,7 +45,9 @@ for script in "${SCRIPTS[@]}"; do
   require_contains "$script" 'function Complete-Install {'
   require_contains "$script" 'return (Fail-Install -Code 2)'
   require_contains "$script" 'return (Fail-Install)'
+  # shellcheck disable=SC2016
   require_contains "$script" 'Complete-Install -Succeeded:$installSucceeded'
+  # shellcheck disable=SC2016
   require_contains "$script" 'throw "OpenClaw installation failed with exit code $($script:InstallExitCode)."'
 done
 
