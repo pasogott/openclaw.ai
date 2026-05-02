@@ -532,8 +532,7 @@ echo "==> case: install_openclaw_from_git (deps step uses run_pnpm function)"
   # shellcheck disable=SC2034
   SHARP_IGNORE_GLOBAL_LIBVIPS=1
 
-  deps_called=0
-  deps_cmd=""
+  run_pnpm_steps=()
 
   check_git() { return 0; }
   install_git() { fail "install_git should not be called"; }
@@ -550,16 +549,18 @@ echo "==> case: install_openclaw_from_git (deps step uses run_pnpm function)"
   run_quiet_step() {
     local _title="$1"
     shift
-    if [[ "${_title}" == "Installing dependencies" ]]; then
-      deps_called=1
-      deps_cmd="${1:-}"
+    if [[ "${1:-}" == "run_pnpm" ]]; then
+      shift
+      run_pnpm_steps+=("$*")
+      return 0
     fi
     "$@" >/dev/null 2>&1 || true
   }
 
   install_openclaw_from_git "${repo}"
-  assert_eq "$deps_called" "1" "install_openclaw_from_git dependencies step"
-  assert_eq "$deps_cmd" "run_pnpm" "install_openclaw_from_git dependencies command"
+  assert_eq "${run_pnpm_steps[0]}" "-C ${repo} install" "install_openclaw_from_git dependencies command"
+  assert_eq "${run_pnpm_steps[1]}" "-C ${repo} ui:build" "install_openclaw_from_git ui build command"
+  assert_eq "${run_pnpm_steps[2]}" "-C ${repo} build" "install_openclaw_from_git build command"
 )
 
 echo "==> case: ensure_pnpm_git_prepare_allowlist (known dep added once)"

@@ -226,8 +226,7 @@ echo "==> case: install_openclaw_from_git uses run_pnpm"
   export GIT_UPDATE=0
   export SHARP_IGNORE_GLOBAL_LIBVIPS=1
 
-  deps_cmd=""
-  build_cmd=""
+  run_pnpm_calls=()
 
   ensure_git() { :; }
   ensure_pnpm() { set_pnpm_cmd echo pnpm; }
@@ -237,17 +236,14 @@ echo "==> case: install_openclaw_from_git uses run_pnpm"
   emit_json() { :; }
   fail() { echo "FAIL: $*" >&2; exit 1; }
   run_pnpm() {
-    if [[ -z "$deps_cmd" ]]; then
-      deps_cmd="$1"
-    else
-      build_cmd="$1"
-    fi
+    run_pnpm_calls+=("$*")
     return 0
   }
 
   install_openclaw_from_git "${repo}"
-  assert_eq "$deps_cmd" "-C" "install_openclaw_from_git deps command entry"
-  assert_nonempty "$build_cmd" "install_openclaw_from_git build command entry"
+  assert_eq "${run_pnpm_calls[0]}" "-C ${repo} install" "install_openclaw_from_git deps command"
+  assert_eq "${run_pnpm_calls[1]}" "-C ${repo} ui:build" "install_openclaw_from_git ui build command"
+  assert_eq "${run_pnpm_calls[2]}" "-C ${repo} build" "install_openclaw_from_git build command"
   test -x "${prefix}/bin/openclaw"
 )
 
